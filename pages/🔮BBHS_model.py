@@ -103,6 +103,7 @@ def predict_price():
 
 
 st.title('BBHS student prediction model for external exams 🔮')
+st.write('Predict student likelihood of acing upcoming external exams from student data')
 predict = st.button('Predict')
 if predict:
     Study_hours = get_study_hours()
