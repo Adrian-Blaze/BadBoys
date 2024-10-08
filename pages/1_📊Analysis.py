@@ -1,61 +1,74 @@
 import streamlit as st
-import tempfile
+import psycopg2
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import math
 
 def get_result():
-    # Upload results (this is where students can upload their result file)
-    uploaded_file = st.file_uploader("Upload Results", type=["csv"])
-    if uploaded_file is not None:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(uploaded_file.read())
-            file_path = temp_file.name
-        csv = file_path
-        get_analytics(csv)
+    # Connection string
+    conn_str = 'postgresql://postgres:tFKz6F7xrxEjHCC9@fixedly-distinct-jackrabbit.data-1.use1.tembo.io:5432/postgres'
+
+    try:
+        # Create a new database session
+        conn = psycopg2.connect(conn_str)
+    except Exception as e:
+        st.error(f"Unable to connect to the database: {e}")
+        return None
+
+    try:
+        # Create a new cursor object
+        cur = conn.cursor()
+        query = """
+        SELECT subject_name, performance
+        FROM performance
+        WHERE student_username = 'BBHS-1002'
+        """
+        cur.execute(query)
+        # Fetch result
+        output = cur.fetchall()
+        st.session_state['output'] = output  # Store results in session state
+        return output
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return None
+
         
         
     
 
 def get_analytics(result):
-  df = pd.read_csv(result)
+    df = pd.DataFrame(result, columns=['SUBJECT', 'TOTAL (100%)'])
 
     # Display the result
-  st.write(df)
+    st.write(df)
 
-   #Create analyze button
-  analyze_button = st.button("Get Analysis")
-  global sorted_data
+    analyze_button = st.button("Get Analysis")
+    if analyze_button:
+        global sorted_data
+        sorted_data = df[['SUBJECT', 'TOTAL (100%)']].sort_values(by='TOTAL (100%)', ascending=True)
+        st.session_state['sorted_data'] = sorted_data
 
-  sorted_data = df[['SUBJECT', 'TOTAL (100%)']].sort_values(by='TOTAL (100%)', ascending=True)
-
-  # Check if the ask button is clicked
-  if analyze_button:
-      # Perform analysis
-      
-    # Normalize the total scores to a 0-1 range
-      norm = mcolors.Normalize(vmin=0, vmax=100)  #the score range is from 0 to 100
-      # Create a colormap that transitions from red (low) to green (high)
-      cmap = plt.cm.RdYlGn
+        # Normalize the total scores to a 0-1 range
+        norm = mcolors.Normalize(vmin=0, vmax=100)  # score range is from 0 to 100
+        cmap = plt.cm.RdYlGn
 
         # Map the normalized total scores to the colormap
-      bar_colors = cmap(norm(sorted_data['TOTAL (100%)']))
+        bar_colors = cmap(norm(sorted_data['TOTAL (100%)']))
+
         # Plot a bar chart
-      fig, ax = plt.subplots(figsize=(10, 6))
-      ax.bar(sorted_data['SUBJECT'], sorted_data['TOTAL (100%)'], color=bar_colors)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.bar(sorted_data['SUBJECT'], sorted_data['TOTAL (100%)'], color=bar_colors)
 
-      # Add labels and title
-      ax.set_xlabel('SUBJECT')
-      ax.set_ylabel('TOTAL (100%)')
-      ax.set_title('Scores by Subject (Sorted)')
-      # Adjust y-axis limits (set lower limit and upper limit)
-      plt.ylim(0, sorted_data['TOTAL (100%)'].max() * 1.1)  # Scale down/up as needed
+        # Add labels and title
+        ax.set_xlabel('SUBJECT')
+        ax.set_ylabel('TOTAL (100%)')
+        ax.set_title('Scores by Subject (Sorted)')
+        plt.ylim(0, sorted_data['TOTAL (100%)'].max() * 1.1)  # Scale down/up as needed
+        plt.xticks(rotation=45, ha='right')
 
-          # Rotate x-axis labels if necessary
-      plt.xticks(rotation=45, ha='right')
-      # Display the chart in Streamlit
-      st.pyplot(fig)
+        # Display the chart in Streamlit
+        st.pyplot(fig)
 
       
       
@@ -67,8 +80,10 @@ def get_study_guide():
     #Create analyze button
   study_plan_button = st.button("Create Study Plan")
 
-  # Check if the ask button is clicked
-  if study_plan_button:
+
+  # Check if the button is clicked and sorted_data is available
+  if study_plan_button and 'sorted_data' in st.session_state:
+      sorted_data = st.session_state['sorted_data']
       # create study plan
       # Assuming 'sorted_data' DataFrame has the calculated 'study_hours' per subject
       # Step 1: Identify the lowest 3 subjects based on performance (sorted ascending)
@@ -142,7 +157,7 @@ def get_study_guide():
                   i += 1
 
       # Display the final timetable
-      st.markdown(f"### {user}'s Weekly Study Timetable")
+      st.markdown(f"Weekly Study Timetable")
       timetable_rows = []
       for day, schedule in timetable.items():
           #st.markdown(f"###\n{day}:")
@@ -153,16 +168,6 @@ def get_study_guide():
       # Create a DataFrame from the rows
       df_timetable = pd.DataFrame(timetable_rows, columns=['Day', 'Subject', 'Hours'])
       st.write(df_timetable)
-
-  
-
-def track_study_hours():
-      pass
-  
-
-def leader_board():
-      pass
-
 
 
 
@@ -180,55 +185,20 @@ def main():
 
     st.markdown(html_temp, unsafe_allow_html=True)
     #st.title("BBHS Insights and Productivity app")
-   # Predefined password
-    correct_password = 'Badboys'
+    if 'output' not in st.session_state:
+        get_result_button = st.button("Get Result")
+        if get_result_button:
+            output = get_result()
+            if output:
+                get_analytics(output)
+    else:
+        get_analytics(st.session_state['output'])
 
-        # Initialize the session state for logged_in if not already done
-    if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
+    get_study_guide()
 
-    # Main screen for Login using an expandable container
-    with st.expander("BBHS Login", expanded=False):
-        # Create a form for username and password input
-        with st.form(key='login_form'):
-            global user
-            user = st.text_input("Username", key='user')
 
-            # Optional: Custom handling for a specific user ID
-            if user == 'BBHS134208':
-                user = 'Blaze'
-
-            pw = st.text_input("Password", key='pw', type='password')
-
-            # Submit button for form
-            login_button = st.form_submit_button("Login")
-
-        # Login Validation after form submission
-        if login_button:
-            if not user:
-                st.warning('Please enter a username.')
-            elif not pw:
-                st.warning('Please enter a password.')
-            elif pw != correct_password:
-                st.error('Incorrect password. Please try again.')
-            else:
-                st.session_state.logged_in = True  # Set login state to True
-                st.success(f'Welcome, {user}! Student access confirmed.')
-
-    # Main content visible only after successful login
-    if st.session_state.logged_in:
-        st.subheader("Upload Student Results")
-        get_result()
-        get_study_guide()
-    
             
-            
-            
-
-
-
-
-
+                
 
 if __name__ == "__main__":
     main()
