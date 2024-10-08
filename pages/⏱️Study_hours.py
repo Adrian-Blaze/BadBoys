@@ -1,5 +1,6 @@
 import streamlit as st
-from datetime import datetime, timedelta
+from datetime import datetime
+import  psycopg2
 
 # Initialize session state to track multiple start and end times and total weekly records
 if 'study_records' not in st.session_state:
@@ -19,6 +20,39 @@ def calculate_weekly_study_hours():
     total_minutes = sum(st.session_state['weekly_records'])
     total_hours = total_minutes / 60  # Convert minutes to hours
     return total_hours
+
+def update_total_study_hours(total_study_hours):
+    # Connection string
+    conn_str = 'postgresql://postgres:tFKz6F7xrxEjHCC9@fixedly-distinct-jackrabbit.data-1.use1.tembo.io:5432/postgres'
+    
+    try:
+        # Create a new database session
+        conn = psycopg2.connect(conn_str)
+        cur = conn.cursor()
+
+        # Update query to push total study hours for the student
+        update_query = """
+        UPDATE students
+        SET study_hours = %s
+        WHERE username = %s
+        """
+        
+        username = 'BBHS-1002'
+
+        # Execute the query
+        cur.execute(update_query, (total_study_hours, username))
+
+        # Commit the changes
+        conn.commit()
+
+        # Close the connection
+        cur.close()
+        conn.close()
+        st.success(f"Updated cumulative weekly study hours: {total_study_hours}")
+
+    except Exception as e:
+        st.error(f"Error while updating the database: {e}")
+
 
 # Display the current session study records
 st.header("⏳Study Time Tracker")
@@ -99,6 +133,7 @@ if st.session_state['calculate_button_clicked']:
 # Display the calculated study hours if they are available in session state
 if st.session_state['weekly_hours_calculated'] is not None:
     st.success(f"Total Study Hours for the Week: {st.session_state['weekly_hours_calculated']:.2f} hours")
+    update_total_study_hours(total_weekly_hours)
 
 
 
