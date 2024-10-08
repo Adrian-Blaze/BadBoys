@@ -4,7 +4,7 @@ import streamlit as st
 
 # Sample DataFrame with dummy data
 data = {
-    'Student': ['Alice', 'Bob', 'Charlie', 'David', 'Eva'],
+    'Student': ['Antonia', 'Blaze', 'Kachi', 'Adrian', 'Kintolo'],
     'Study_Hours': [40, 35, 50, 30, 45],  # Dummy study hours
     'Mock_Exam_Score': [80, 90, 70, 85, 75]  # Dummy exam scores
 }
