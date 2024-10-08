@@ -132,7 +132,7 @@ if st.session_state['calculate_button_clicked']:
 
 # Display the calculated study hours if they are available in session state
 if st.session_state['weekly_hours_calculated'] is not None:
-    st.success(f"Total Study Hours for the Week: {st.session_state['weekly_hours_calculated']:.2f} hours")
+    st.write(f"Total Study Hours for the Week: {st.session_state['weekly_hours_calculated']:.2f} hours")
     update_total_study_hours(total_weekly_hours)
 
 
