@@ -11,4 +11,6 @@ SQLAlchemy==2.0.16
 streamlit==1.39.0
 toml==0.10.2
 setuptools>=42
+distlib
+
 
